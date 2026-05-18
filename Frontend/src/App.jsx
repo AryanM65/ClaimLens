@@ -1,9 +1,29 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center text-3xl font-bold text-indigo-600 bg-slate-50">
-      hello here
-    </div>
-  )
+    <Router>
+      <div className="flex flex-col min-h-screen bg-gray-950">
+        <Navbar />
+        <main className="flex-grow pt-20"> {/* pt-20 to account for fixed navbar */}
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            {/* <Route path="/report" element={<Report />} /> */}
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </Router>
+  );
 }
 
-export default App
+export default App;

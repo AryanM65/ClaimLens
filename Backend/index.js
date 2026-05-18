@@ -3,6 +3,9 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
+import authRoutes from "./Routes/authRoutes.js";
+import userRoutes from "./Routes/userRoutes.js";
+
 
 dotenv.config();
 
@@ -25,6 +28,10 @@ app.use(cookieParser());
 app.get("/", (req, res) => {
   res.send("ClaimLens API is running...");
 });
+
+// API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 
 // Start Server
 app.listen(PORT, () => {
