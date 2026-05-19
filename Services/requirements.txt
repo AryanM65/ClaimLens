@@ -1,0 +1,32 @@
+# Web framework
+fastapi
+uvicorn[standard]
+
+# Environment
+python-dotenv
+
+# Video download
+yt-dlp
+
+# Video/audio processing
+ffmpeg-python
+
+# Speech transcription (Sarvam AI Saaras v3)
+sarvamai
+
+# OCR
+pytesseract
+Pillow
+opencv-python
+
+# Gemini AI
+google-generativeai
+
+# Web search (Serper)
+requests
+
+# Data validation
+pydantic
+
+# Async file I/O
+aiofiles
