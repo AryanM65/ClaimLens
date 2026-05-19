@@ -8,5 +8,5 @@ By simply pasting an ad URL, our multi-modal AI pipeline extracts audio transcri
 
 - **Frontend:** React.js, Vite, Tailwind CSS, Recharts
 - **Backend:** Node.js, Express, MongoDB (Mongoose), JWT Authentication
-- **AI Services Pipeline:** Python, FastAPI, yt-dlp, ffmpeg, Sarvam AI (multilingual), EasyOCR, Gemini 1.5 Flash
+- **AI Services Pipeline:** Python, FastAPI, yt-dlp, ffmpeg, Sarvam AI (multilingual), Tessaract OCR, Gemini 2.5 Flash
 - **Job Queue:** BullMQ & Upstash Redis (to handle long-running video analysis asynchronously)
