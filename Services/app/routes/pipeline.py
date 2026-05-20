@@ -16,11 +16,12 @@ async def run_pipeline(request: PipelineRequest):
     Flow:
         1. Download video (yt-dlp)
         2. Extract audio + frames (ffmpeg)
-        3. [PARALLEL] Transcribe audio (Groq) + OCR all frames (EasyOCR)
-        4. Extract claims from transcript + OCR text (Gemini call 1)
-        5. Fact-check each claim (Serper + Gemini)
-        6. Score the full report (Gemini call 2)
-        7. Cleanup temp files
+        3. [PARALLEL] Transcribe audio (Sarvam AI) + OCR all frames (Tesseract)
+        4. Visual manipulation analysis (Gemini Call 1)
+        5. Extract claims from transcript + OCR text (Gemini Call 2)
+        6. Fact-check each claim (Serper + Gemini)
+        7. Score the full report (Gemini Call 3)
+        8. Cleanup temp files
     """
     job_dir = get_job_dir(request.jobId)
 
@@ -40,18 +41,27 @@ async def run_pipeline(request: PipelineRequest):
         transcript = transcript_result["text"]
         language   = transcript_result["language"]
 
-        # Step 4 — Gemini call 1: extract all factual claims
-        claims = await analyser.extract_claims(transcript, ocr_text, language)
+        # Step 4 — Gemini call 1: Visual analysis of keyframes
+        visual_flags = await analyser.visual_analysis(frames_dir, transcript)
 
-        # Step 5 — Serper + Gemini: verify and label each claim
+        # Step 5 — Gemini call 2: extract all factual claims from text/audio
+        claims = await analyser.extract_claims(transcript, ocr_text)
+
+        # Step 6 — Serper + Gemini: verify and label each claim
         verified_claims = await factchecker.verify_claims(claims)
 
-        # Step 6 — Gemini call 2: produce final scores and verdict
-        report = await analyser.score_report(transcript, ocr_text, verified_claims, language)
+        # Step 7 — Gemini call 3: produce final scores, verdict, and structured report
+        report = await analyser.score_report(
+            transcript,
+            ocr_text,
+            verified_claims,
+            visual_flags,
+            language,
+        )
 
         # Attach request metadata
-        report["jobId"] = request.jobId
-        report["url"]   = request.url
+        report["jobId"]        = request.jobId
+        report["url"]          = request.url
 
         return report
 
@@ -62,5 +72,5 @@ async def run_pipeline(request: PipelineRequest):
         raise HTTPException(status_code=500, detail=f"Pipeline failed: {str(e)}")
 
     finally:
-        # Step 7 — Always cleanup temp files
+        # Step 8 — Always cleanup temp files
         cleanup_job(job_dir)
