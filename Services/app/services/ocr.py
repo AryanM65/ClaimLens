@@ -77,19 +77,28 @@ def _ocr_single_frame(frame_path: str) -> list[str]:
     return [" ".join(words) for words in lines.values() if words]
 
 
-async def extract_text_from_frames(frame_paths: list[str]) -> str:
+async def extract_text_from_frames(frames_dir: str) -> str:
     """
-    Runs Tesseract OCR on a list of frame paths concurrently.
+    Runs Tesseract OCR on all frames in frames_dir concurrently.
 
     Each frame is submitted individually to the default thread-pool executor,
     with up to _OCR_CONCURRENCY frames running at the same time.
 
     Args:
-        frame_paths: List of absolute paths to frame JPEGs.
+        frames_dir: Path to the directory containing frame JPEGs.
 
     Returns:
         Deduplicated combined text block from all frames (in chronological order).
     """
+    if not frames_dir or not os.path.exists(frames_dir):
+        return ""
+
+    frame_paths = sorted([
+        os.path.join(frames_dir, f)
+        for f in os.listdir(frames_dir)
+        if f.lower().endswith((".jpg", ".jpeg"))
+    ])
+
     if not frame_paths:
         return ""
 

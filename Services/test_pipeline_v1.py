@@ -76,7 +76,7 @@ async def run(url: str, job_id: str):
 
     transcript_result, combined_ocr, visual_flags = await asyncio.gather(
         transcribe(audio_path),
-        extract_text_from_frames(frame_paths),
+        extract_text_from_frames(frames_dir),
         visual_analysis(frames_dir),
     )
 

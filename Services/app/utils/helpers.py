@@ -36,3 +36,27 @@ def clean_json_response(text: str) -> str:
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
     return text.strip()
+
+
+def generate_content_with_retry(client, model: str, contents, max_retries: int = 5):
+    """
+    Wrapper for Gemini's generate_content that automatically catches 429 Resource Exhausted
+    rate limits, sleeps for a cooldown window, and retries.
+    """
+    import time
+    delay = 10.0
+    for attempt in range(max_retries):
+        try:
+            return client.models.generate_content(model=model, contents=contents)
+        except Exception as e:
+            err_msg = str(e)
+            if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower():
+                print(f"\n⚠️ [Gemini Rate Limit] 429 Resource Exhausted. Sleeping {delay}s before retry... (Attempt {attempt+1}/{max_retries})")
+                time.sleep(delay)
+                delay += 5.0  # Scale retry delay
+            else:
+                # Re-raise standard/developer errors (invalid parameters, etc.)
+                raise e
+
+    # Final attempt
+    return client.models.generate_content(model=model, contents=contents)

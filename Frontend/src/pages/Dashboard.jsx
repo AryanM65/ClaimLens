@@ -1,10 +1,29 @@
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { ShieldCheck, History, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const Dashboard = () => {
   const { user, loading, setUser } = useAuth();
+  const [reports, setReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchHistory = async () => {
+      try {
+        setReportsLoading(true);
+        const response = await axios.get('/api/analysis/reports');
+        setReports(response.data || []);
+      } catch (err) {
+        console.error("Failed to load reports history", err);
+      } finally {
+        setReportsLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [user]);
 
   if (loading) {
     return (
@@ -55,7 +74,7 @@ const Dashboard = () => {
         </div>
 
         {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
           
           {/* Card 1: New Analysis */}
           <div className="bg-gradient-to-br from-indigo-900/50 to-gray-900 border border-indigo-500/30 overflow-hidden rounded-2xl shadow-lg hover:border-indigo-500/60 transition-colors group">
@@ -82,7 +101,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Card 2: Report History */}
+          {/* Card 2: Report History Metric */}
           <div className="bg-gray-900 border border-gray-800 overflow-hidden rounded-2xl shadow-lg hover:border-gray-700 transition-colors">
             <div className="p-6">
               <div className="flex items-center">
@@ -92,21 +111,91 @@ const Dashboard = () => {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-400 truncate">Total Analyses</dt>
-                    <dd className="text-lg font-semibold text-white">0 Reports</dd>
+                    <dd className="text-lg font-semibold text-white">
+                      {reportsLoading ? "..." : `${reports.length} Reports`}
+                    </dd>
                   </dl>
                 </div>
               </div>
             </div>
             <div className="bg-gray-800/30 px-6 py-4 border-t border-gray-800">
-              <div className="text-sm">
-                <a href="#" className="font-medium text-indigo-400 hover:text-indigo-300">
-                  View full history
-                </a>
+              <div className="text-sm text-gray-400">
+                Logged securely in your MongoDB database
               </div>
             </div>
           </div>
 
         </div>
+
+        {/* Dynamic Recent Reports List */}
+        <div className="mt-12">
+          <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+            <History className="h-6 w-6 text-indigo-500" />
+            Recent Credibility Analyses
+          </h3>
+
+          {reportsLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+            </div>
+          ) : reports.length === 0 ? (
+            <div className="bg-gray-900/50 border border-gray-800 rounded-3xl p-12 text-center shadow-lg">
+              <History className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+              <h4 className="text-lg font-semibold text-white mb-1">No reports generated yet</h4>
+              <p className="text-gray-400 text-sm max-w-sm mx-auto mb-6">
+                Paste an ad URL on the home page and run your first AI analysis to build your credibility dashboard history!
+              </p>
+              <a 
+                href="/" 
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+              >
+                Analyze Your First Video
+              </a>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {reports.map((report) => (
+                <div 
+                  key={report._id} 
+                  className="bg-gray-900/40 border border-gray-850 rounded-2xl p-6 hover:border-indigo-500/30 transition-all flex flex-col justify-between shadow-xl backdrop-blur-sm group"
+                >
+                  <div>
+                    <div className="flex justify-between items-start gap-4 mb-4">
+                      <span className="text-xs font-semibold text-indigo-400 font-mono tracking-wider uppercase">
+                        {report.languageDetected} Ad Analysis
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                        report.overallScore >= 80 ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/10" :
+                        report.overallScore >= 50 ? "text-amber-400 border-amber-500/20 bg-amber-500/10" :
+                        "text-rose-400 border-rose-500/20 bg-rose-500/10"
+                      }`}>
+                        Score: {report.overallScore}/100
+                      </span>
+                    </div>
+                    <p className="text-white font-semibold text-sm truncate mb-2 group-hover:text-indigo-300 transition-colors">
+                      {report.url}
+                    </p>
+                    <p className="text-gray-400 text-xs line-clamp-2 italic mb-4">
+                      "{report.verdict}"
+                    </p>
+                  </div>
+                  <div className="flex justify-between items-center pt-4 border-t border-gray-800 mt-2">
+                    <span className="text-xs text-gray-500">
+                      {new Date(report.createdAt).toLocaleDateString()}
+                    </span>
+                    <a 
+                      href={`/report?url=${encodeURIComponent(report.url)}`}
+                      className="text-indigo-400 hover:text-indigo-300 font-semibold text-xs flex items-center gap-1"
+                    >
+                      View Full Dashboard →
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
