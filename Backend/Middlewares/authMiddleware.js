@@ -16,6 +16,14 @@ export const protect = async (req, res, next) => {
       // Fetch user from DB and attach to req object (excluding password)
       req.user = await User.findById(decoded.userId).select('-password');
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authorized, user not found' });
+      }
+
+      if (req.user.isBanned) {
+        return res.status(403).json({ message: 'Your account has been banned. Please contact support.' });
+      }
+
       next();
     } catch (error) {
       console.error(error);

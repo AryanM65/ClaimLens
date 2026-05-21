@@ -2,28 +2,52 @@ import mongoose from "mongoose";
 
 const ReportSchema = new mongoose.Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: false,
+    // url is the primary cache key — unique and indexed for fast lookups
+    url: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
     },
+
     jobId: {
       type: String,
       required: true,
       unique: true,
       index: true,
     },
-    url: {
-      type: String,
-      required: true,
+
+    overallScore: {
+      type: Number,
+      default: 50,
+      min: [0, 'Score cannot be below 0'],
+      max: [100, 'Score cannot exceed 100'],
     },
-    overallScore: { type: Number, default: 50 },
-    audioScore: { type: Number, default: 50 },
-    textScore: { type: Number, default: 50 },
-    verdict: { type: String, default: "" },
+
+    audioScore: {
+      type: Number,
+      default: 50,
+      min: [0, 'Score cannot be below 0'],
+      max: [100, 'Score cannot exceed 100'],
+    },
+
+    textScore: {
+      type: Number,
+      default: 50,
+      min: [0, 'Score cannot be below 0'],
+      max: [100, 'Score cannot exceed 100'],
+    },
+
+    // null until the pipeline generates a verdict
+    verdict: {
+      type: String,
+      default: null,
+    },
+
     flaggedClaims: [
       {
-        claim: { type: String, required: true },
+        claim:    { type: String, required: true },
+        category: { type: String, default: 'other' }, // e.g. health, statistical, comparative, endorsement
         status: {
           type: String,
           enum: ["Verified", "Misleading", "Unverifiable", "False"],
@@ -32,12 +56,14 @@ const ReportSchema = new mongoose.Schema(
         evidence: { type: String, required: true },
       },
     ],
+
     visualFlags: [
       {
-        issue: { type: String, required: true },
+        issue:       { type: String, required: true },
         description: { type: String, required: true },
       },
     ],
+
     languageDetected: {
       type: String,
       default: "en",

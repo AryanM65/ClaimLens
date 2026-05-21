@@ -1,4 +1,5 @@
 import User from '../Models/User.js';
+import Organization from '../Models/Organization.js';
 import jwt from 'jsonwebtoken';
 
 // Generate JWT token
@@ -19,28 +20,63 @@ const generateToken = (res, userId) => {
 // @route   POST /api/auth/signup
 // @access  Public
 export const signup = async (req, res) => {
-  const { name, email, password } = req.body;
+  // orgCode is optional — only provided by org members (e.g. "nestle-india")
+  const { name, username, email, password, orgCode } = req.body;
 
   try {
-    const userExists = await User.findOne({ email });
+    if (!username) {
+      return res.status(400).json({ message: 'Username is required' });
+    }
 
+    const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    const usernameExists = await User.findOne({ username: username.toLowerCase() });
+    if (usernameExists) {
+      return res.status(400).json({ message: 'Username is already taken' });
+    }
+
+    // If orgCode is provided, look up the organization by its human-readable code
+    let resolvedRole = 'user';
+    let resolvedOrgId = null;
+
+    if (orgCode) {
+      const org = await Organization.findOne({ orgCode: orgCode.trim().toLowerCase() });
+      if (!org) {
+        return res.status(404).json({ message: 'Organization not found. Please check the org code.' });
+      }
+      resolvedRole = 'organization';
+      resolvedOrgId = org._id;
     }
 
     const user = await User.create({
       name,
+      username: username.toLowerCase(),
       email,
       password,
+      role: resolvedRole,
+      organizationId: resolvedOrgId,
     });
+
+    // Set createdBy on the org to the first user who signs up with this code
+    if (resolvedOrgId) {
+      await Organization.findOneAndUpdate(
+        { _id: resolvedOrgId, createdBy: null },
+        { $set: { createdBy: user._id } }
+      );
+    }
 
     if (user) {
       generateToken(res, user._id);
       res.status(201).json({
         _id: user._id,
         name: user.name,
+        username: user.username,
         email: user.email,
-        authProvider: user.authProvider,
+        role: user.role,
+        organizationId: user.organizationId,
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -68,8 +104,8 @@ export const login = async (req, res) => {
       res.status(200).json({
         _id: user._id,
         name: user.name,
+        username: user.username,
         email: user.email,
-        authProvider: user.authProvider,
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });

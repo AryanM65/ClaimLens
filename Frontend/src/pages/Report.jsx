@@ -1,22 +1,30 @@
 import { useEffect, useState, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ShieldAlert, ShieldCheck, AlertTriangle, Sparkles, Languages, 
   CheckCircle2, XCircle, Info, ExternalLink, RefreshCw, ArrowLeft,
-  ChevronDown, ChevronUp, FileText, BarChart3
+  ChevronDown, ChevronUp, FileText, BarChart3, MessageSquare, Send, ThumbsUp
 } from 'lucide-react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const Report = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const videoUrl = searchParams.get('url');
 
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [report, setReport] = useState(null);
   const [loadingStep, setLoadingStep] = useState(0);
   const [expandedClaim, setExpandedClaim] = useState(null);
+
+  // Community discussion state
+  const [opinions, setOpinions] = useState([]);
+  const [newOpinion, setNewOpinion] = useState('');
+  const [opinionsLoading, setOpinionsLoading] = useState(false);
+  const [opinionSubmitLoading, setOpinionSubmitLoading] = useState(false);
 
   const steps = [
     "Downloading and indexing ad video...",
@@ -52,7 +60,7 @@ const Report = () => {
         setError(null);
         
         // Direct, synchronous Express analysis call
-        const response = await axios.post('/api/analysis/analyse', { url: videoUrl });
+        const response = await axios.post('/api/v1/analysis/analyse', { url: videoUrl });
         setReport(response.data);
       } catch (err) {
         console.error("Analysis API failed:", err);
@@ -64,6 +72,55 @@ const Report = () => {
 
     fetchAnalysis();
   }, [videoUrl]);
+
+  // Load community opinions for this ad
+  useEffect(() => {
+    if (!report || !report.url) return;
+    const fetchOpinions = async () => {
+      try {
+        setOpinionsLoading(true);
+        const res = await axios.get(`/api/v1/community/get-posts?reportId=${report._id}`);
+        setOpinions(res.data || []);
+      } catch (err) {
+        console.error("Failed to load community opinions:", err);
+      } finally {
+        setOpinionsLoading(false);
+      }
+    };
+    fetchOpinions();
+  }, [report]);
+
+  const handleSubmitOpinion = async (e) => {
+    e.preventDefault();
+    if (!newOpinion.trim()) return;
+    try {
+      setOpinionSubmitLoading(true);
+      const res = await axios.post('/api/v1/community/create-post', {
+        reportId: report._id,
+        opinionText: newOpinion.trim(),
+      });
+      setOpinions((prev) => [res.data, ...prev]);
+      setNewOpinion('');
+    } catch (err) {
+      console.error("Failed to submit opinion:", err);
+      alert(err.response?.data?.message || "Failed to post opinion. Please try again.");
+    } finally {
+      setOpinionSubmitLoading(false);
+    }
+  };
+
+  const handleLikeOpinion = async (id) => {
+    if (!user) {
+      alert("Please log in to upvote opinions.");
+      return;
+    }
+    try {
+      const res = await axios.post(`/api/v1/community/${id}/like`);
+      setOpinions((prev) => prev.map((post) => (post._id === id ? res.data : post)));
+    } catch (err) {
+      console.error("Failed to like opinion:", err);
+    }
+  };
 
   const toggleClaim = (index) => {
     setExpandedClaim(expandedClaim === index ? null : index);
@@ -404,9 +461,124 @@ const Report = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
+        {/* Community Discussion Board */}
+        <div className="mt-16 pt-10 border-t border-gray-800">
+          <div className="flex items-center gap-3 mb-8">
+            <MessageSquare className="w-7 h-7 text-indigo-400" />
+            <h3 className="text-2xl font-bold text-white">Community Discussion</h3>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            {/* Left/Col-span-2: Feed of opinions */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Form to submit opinion */}
+              {user ? (
+                <form onSubmit={handleSubmitOpinion} className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-lg">
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Share your opinion</h4>
+                  <div className="relative">
+                    <textarea
+                      rows="3"
+                      required
+                      value={newOpinion}
+                      onChange={(e) => setNewOpinion(e.target.value)}
+                      className="w-full appearance-none block p-4 pr-12 border border-gray-800 rounded-2xl shadow-sm placeholder-gray-500 bg-gray-950 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm resize-none"
+                      placeholder="What is your review or thoughts on the credibility of this advertisement?"
+                    />
+                    <button
+                      type="submit"
+                      disabled={opinionSubmitLoading || !newOpinion.trim()}
+                      className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all disabled:opacity-50"
+                    >
+                      {opinionSubmitLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="bg-gray-900/50 border border-gray-800 rounded-3xl p-6 text-center">
+                  <p className="text-gray-400 text-sm">
+                    Please{" "}
+                    <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-semibold underline">
+                      log in
+                    </Link>{" "}
+                    to share your opinion with the community!
+                  </p>
+                </div>
+              )}
+
+              {/* Feed List */}
+              {opinionsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+                </div>
+              ) : opinions.length === 0 ? (
+                <div className="bg-gray-900/30 border border-gray-800/50 rounded-3xl p-8 text-center">
+                  <MessageSquare className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                  <h4 className="text-lg font-semibold text-white mb-1">No Opinions Yet</h4>
+                  <p className="text-gray-400 text-sm">
+                    Be the first to share your opinion or verdict about this ad!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {opinions.map((post) => {
+                    const isLiked = user && post.likes.includes(user._id);
+                    return (
+                      <div key={post._id} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-md hover:border-gray-700 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-indigo-400 font-bold text-sm">
+                            @{post.userId?.username || 'anonymous'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(post.createdAt).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-gray-300 text-sm leading-relaxed mb-4">
+                          {post.opinionText}
+                        </p>
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={() => handleLikeOpinion(post._id)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                              isLiked
+                                ? "bg-indigo-600/10 border-indigo-500 text-indigo-400"
+                                : "bg-gray-950 border-gray-800 text-gray-400 hover:text-white"
+                            }`}
+                          >
+                            <ThumbsUp className="w-3.5 h-3.5" />
+                            <span>{post.likes.length} Upvotes</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right/Col-span-1: Info Sidebar card */}
+            <div className="lg:col-span-1 bg-gray-900/50 border border-gray-800 rounded-3xl p-6 shadow-md">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">
+                Community Guidelines
+              </h4>
+              <ul className="text-xs text-gray-400 space-y-3 list-disc pl-4 leading-relaxed">
+                <li>Keep the discussion focused strictly on the ad's credibility.</li>
+                <li>Avoid insulting other users; keep opinions respectful.</li>
+                <li>If citing scientific evidence, try to describe the study or findings briefly.</li>
+                <li>Double check your facts before disputing verified ratings!</li>
+              </ul>
+            </div>
+          </div>
         </div>
 
       </div>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Mail, Lock, User, Loader2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, User, Loader2, ArrowRight, AtSign } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
 const Signup = () => {
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,7 +26,7 @@ const Signup = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await axios.post('/api/auth/signup', { name, email, password });
+      const response = await axios.post('/api/v1/auth/signup', { name, username, email, password });
 
       if (response.status === 201) {
         setUser(response.data);
@@ -81,6 +82,25 @@ const Signup = () => {
                   placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300">
+                Username
+              </label>
+              <div className="mt-2 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <AtSign className="h-5 w-5 text-gray-500" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-700 rounded-xl shadow-sm placeholder-gray-500 bg-gray-950 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm"
+                  placeholder="johndoe"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
             </div>

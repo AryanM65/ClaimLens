@@ -14,7 +14,7 @@ const Dashboard = () => {
     const fetchHistory = async () => {
       try {
         setReportsLoading(true);
-        const response = await axios.get('/api/analysis/reports');
+        const response = await axios.get('/api/v1/analysis/reports');
         setReports(response.data || []);
       } catch (err) {
         console.error("Failed to load reports history", err);
@@ -40,7 +40,7 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post('/api/auth/logout');
+      await axios.post('/api/v1/auth/logout');
       setUser(null);
     } catch (err) {
       console.error('Failed to log out', err);
@@ -56,7 +56,7 @@ const Dashboard = () => {
           <div className="flex-1 min-w-0">
             <h2 className="text-3xl font-bold leading-7 text-white sm:text-4xl sm:truncate flex items-center gap-3">
               <ShieldCheck className="h-10 w-10 text-indigo-500" />
-              Welcome back, {user.name.split(' ')[0]}
+              Welcome back, @{user.username || user.name.split(' ')[0]}
             </h2>
             <p className="mt-2 text-sm text-gray-400">
               Manage your credibility reports and account settings.
