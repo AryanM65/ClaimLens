@@ -6,6 +6,9 @@ import connectDB from "./config/db.js";
 import authRoutes from "./Routes/authRoutes.js";
 import userRoutes from "./Routes/userRoutes.js";
 import analysisRoutes from "./Routes/analysisRoutes.js";
+import communityRoutes from "./Routes/communityRoutes.js";
+import disputeRoutes from "./Routes/disputeRoutes.js";
+import organizationRoutes from "./Routes/organizationRoutes.js";
 
 
 dotenv.config();
@@ -31,9 +34,12 @@ app.get("/", (req, res) => {
 });
 
 // API Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/analysis", analysisRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/analysis", analysisRoutes);
+app.use("/api/v1/community", communityRoutes);
+app.use("/api/v1/disputes", disputeRoutes);
+app.use("/api/v1/organizations", organizationRoutes);
 
 // Start Server
 app.listen(PORT, () => {

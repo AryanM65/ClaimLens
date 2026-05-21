@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
     // Check if user is logged in when the app loads
     const checkUserLoggedIn = async () => {
       try {
-        const response = await axios.get('/api/users/profile');
+        const response = await axios.get('/api/v1/users/profile');
         if (response.status === 200) {
           setUser(response.data);
         } else {
