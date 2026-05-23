@@ -5,12 +5,21 @@ import time
 import requests
 from google import genai
 from dotenv import load_dotenv
-from app.utils.helpers import clean_json_response
+from app.utils.helpers import clean_json_response, generate_content_with_retry
 
 load_dotenv()
 
-_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-_MODEL  = "gemini-2.5-flash"
+_client = None
+_MODEL  = "gemini-2.0-flash"
+
+def _get_client():
+    global _client
+    if _client is None:
+        key = os.getenv("GEMINI_API_KEY")
+        if not key:
+            raise ValueError("GEMINI_API_KEY environment variable is missing or empty.")
+        _client = genai.Client(api_key=key)
+    return _client
 
 _SERPER_KEY = os.getenv("SERPER_API_KEY")
 _SERPER_URL = "https://google.serper.dev/search"
@@ -114,7 +123,7 @@ Return ONLY valid JSON in this exact shape:
 
     for attempt in range(3):
         try:
-            response = _client.models.generate_content(model=_MODEL, contents=prompt)
+            response = generate_content_with_retry(_get_client(), _MODEL, prompt)
             result = json.loads(clean_json_response(response.text))
             return {
                 "claim":    claim,

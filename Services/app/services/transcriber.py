@@ -7,8 +7,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Sarvam AI client — initialised once at module level
-_client = SarvamAI(api_subscription_key=os.getenv("SARVAM_API_KEY"))
+# Sarvam AI client — initialized lazily
+_client = None
+
+def _get_client():
+    global _client
+    if _client is None:
+        key = os.getenv("SARVAM_API_KEY")
+        if not key:
+            raise ValueError("SARVAM_API_KEY environment variable is missing or empty.")
+        _client = SarvamAI(api_subscription_key=key)
+    return _client
 
 # Sarvam sync API limit is 30s. We use 25s chunks to stay safely under.
 _CHUNK_DURATION_SECONDS = 25
@@ -81,8 +90,9 @@ def _transcribe_chunk_sync(chunk_path: str) -> dict:
     Returns empty result on error so one bad chunk doesn't crash the pipeline.
     """
     try:
+        client = _get_client()
         with open(chunk_path, "rb") as f:
-            response = _client.speech_to_text.transcribe(
+            response = client.speech_to_text.transcribe(
                 file=f,
                 model="saaras:v3",
                 language_code="unknown",
@@ -92,7 +102,8 @@ def _transcribe_chunk_sync(chunk_path: str) -> dict:
             "text":          getattr(response, "transcript", "") or "",
             "language_code": getattr(response, "language_code", "unknown") or "unknown",
         }
-    except Exception:
+    except Exception as e:
+        print(f"[transcribe_chunk] Error: {e}")
         return {"text": "", "language_code": "unknown"}
 
 
