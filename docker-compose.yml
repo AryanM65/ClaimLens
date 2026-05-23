@@ -1,0 +1,39 @@
+services:
+
+  # ── FastAPI AI Pipeline ───────────────────────────────────────────────────
+  pipeline:
+    build:
+      context: ./Services
+      dockerfile: Dockerfile
+    container_name: claimlens-pipeline
+    env_file:
+      - ./Services/.env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Express REST API ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: claimlens-backend
+    env_file:
+      - ./Backend/.env
+    environment:
+      # Override the local dev value so Express reaches the pipeline
+      # container by its Docker service name, not 127.0.0.1
+      FASTAPI_URL: http://pipeline:8000
+    ports:
+      - "5000:5000"
+    depends_on:
+      pipeline:
+        condition: service_healthy
+    restart: unless-stopped

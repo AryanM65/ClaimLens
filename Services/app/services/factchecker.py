@@ -150,6 +150,7 @@ async def verify_claims(claims: list[dict]) -> list[dict]:
     async def process_one(c: dict) -> dict:
         snippets, query = await _search_claim(c["claim"])
         result = await _label_claim(c["claim"], snippets)
+        result["category"]     = c.get("category", "other")
         result["search_query"] = query      # store what was actually searched
         result["snippets"]     = snippets   # store raw Serper snippets
         return result

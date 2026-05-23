@@ -12,8 +12,11 @@ from app.utils.helpers import deduplicate_text
 _TESS_LANG   = "eng+hin"
 _TESS_CONFIG = "--oem 3 --psm 3"
 
-# Explicitly point pytesseract to the Tesseract binary.
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# On Windows, point pytesseract to the installed Tesseract binary.
+# On Linux (Docker), Tesseract is on PATH via apt — no override needed.
+import sys as _sys
+if _sys.platform == "win32":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # Max concurrent OCR tasks at one time.
 _OCR_CONCURRENCY = 4

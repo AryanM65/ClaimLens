@@ -7,6 +7,7 @@ class PipelineRequest(BaseModel):
 
 class FlaggedClaim(BaseModel):
     claim: str
+    category: str
     status: Literal["Verified", "Misleading", "Unverifiable", "False"]
     evidence: str
 
