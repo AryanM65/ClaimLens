@@ -1,0 +1,26 @@
+# Python virtual environment — rebuilt inside the image via pip
+.venv/
+
+# Windows-only ffmpeg binaries — Docker uses apt-installed ffmpeg
+ffmpeg.exe
+ffprobe.exe
+
+# Temp pipeline job directories
+tmp/
+
+# Test scripts — not needed in production image
+test_*.py
+
+# Environment file — injected at runtime via docker-compose
+.env
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git
+.git/
+.gitignore

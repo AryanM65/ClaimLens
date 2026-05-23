@@ -20,7 +20,7 @@ Pillow
 opencv-python
 
 # Gemini AI
-google-generativeai
+google-genai
 
 # Web search (Serper)
 requests

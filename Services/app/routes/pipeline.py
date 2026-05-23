@@ -66,9 +66,13 @@ async def run_pipeline(request: PipelineRequest):
         return report
 
     except NotImplementedError as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=501, detail=str(e))
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Pipeline failed: {str(e)}")
 
     finally:
