@@ -4,12 +4,21 @@ import time
 import base64
 from google import genai
 from dotenv import load_dotenv
-from app.utils.helpers import normalize_score, clean_json_response
+from app.utils.helpers import normalize_score, clean_json_response, generate_content_with_retry
 
 load_dotenv()
 
-_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-_MODEL  = "gemini-2.5-flash"
+_client = None
+_MODEL  = "gemini-2.0-flash"
+
+def _get_client():
+    global _client
+    if _client is None:
+        key = os.getenv("GEMINI_API_KEY")
+        if not key:
+            raise ValueError("GEMINI_API_KEY environment variable is missing or empty.")
+        _client = genai.Client(api_key=key)
+    return _client
 
 # Number of frames to evenly sample for Gemini visual analysis
 _GEMINI_FRAME_COUNT = 12
@@ -225,7 +234,7 @@ Return ONLY valid JSON in this exact shape:
 
     for attempt in range(3):
         try:
-            response = _client.models.generate_content(model=_MODEL, contents=prompt)
+            response = generate_content_with_retry(_get_client(), _MODEL, prompt)
             result   = json.loads(clean_json_response(response.text))
             return {
                 "overall_score":     normalize_score(result.get("overall_score", 50)),
