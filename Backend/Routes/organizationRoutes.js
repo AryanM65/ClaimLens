@@ -4,10 +4,14 @@ import {
   verifyOrganization,
   getOrganizations,
   getOrganizationById,
+  getPublicOrganizations,
 } from '../Controllers/organizationController.js';
 import { protect, admin } from '../Middlewares/authMiddleware.js';
 
 const router = express.Router();
+
+// Public: Get all verified organizations
+router.get('/public/list', getPublicOrganizations);
 
 // Public: Register a new organization (before any user signs up)
 // Admin: Get all registered organizations

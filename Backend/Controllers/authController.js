@@ -39,7 +39,7 @@ export const signup = async (req, res) => {
     }
 
     // If orgCode is provided, look up the organization by its human-readable code
-    let resolvedRole = 'user';
+    let resolvedRole = req.body.role || 'user';
     let resolvedOrgId = null;
 
     if (orgCode) {
@@ -90,12 +90,23 @@ export const signup = async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, orgCode } = req.body;
 
   try {
     const user = await User.findOne({ email });
 
     if (user && (await user.comparePassword(password))) {
+      // Validate Org Code if user role is organization
+      if (user.role === 'organization') {
+        if (!orgCode) {
+          return res.status(400).json({ message: 'Organization Code is required for representative login.' });
+        }
+        const org = await Organization.findById(user.organizationId);
+        if (!org || org.orgCode !== orgCode.trim().toLowerCase()) {
+          return res.status(401).json({ message: 'Invalid Organization Code.' });
+        }
+      }
+
       user.lastLoginAt = Date.now();
       await user.save();
 
@@ -106,6 +117,8 @@ export const login = async (req, res) => {
         name: user.name,
         username: user.username,
         email: user.email,
+        role: user.role,
+        organizationId: user.organizationId,
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });

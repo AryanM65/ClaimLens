@@ -68,6 +68,11 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+
+    profilePicture: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true,       // adds createdAt and updatedAt automatically

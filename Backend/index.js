@@ -9,6 +9,7 @@ import analysisRoutes from "./Routes/analysisRoutes.js";
 import communityRoutes from "./Routes/communityRoutes.js";
 import disputeRoutes from "./Routes/disputeRoutes.js";
 import organizationRoutes from "./Routes/organizationRoutes.js";
+import contactRoutes from "./Routes/contactRoutes.js";
 
 
 dotenv.config();
@@ -40,6 +41,7 @@ app.use("/api/v1/analysis", analysisRoutes);
 app.use("/api/v1/community", communityRoutes);
 app.use("/api/v1/disputes", disputeRoutes);
 app.use("/api/v1/organizations", organizationRoutes);
+app.use("/api/v1/contact", contactRoutes);
 
 // Start Server
 app.listen(PORT, () => {
