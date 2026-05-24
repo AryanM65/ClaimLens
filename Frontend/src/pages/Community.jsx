@@ -120,6 +120,10 @@ const Community = () => {
       return;
     }
 
+    if (!window.confirm('Are you absolutely sure? This action is permanent, cannot be undone, and the author will be notified via email.')) {
+      return;
+    }
+
     try {
       await axios.delete(`/api/v1/community/${postId}`);
       // Remove from feed locally
