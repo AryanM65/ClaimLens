@@ -68,6 +68,18 @@ const ReportSchema = new mongoose.Schema(
       type: String,
       default: "en",
     },
+
+    organizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      default: null,
+      index: true,
+    },
+
+    organizationName: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );

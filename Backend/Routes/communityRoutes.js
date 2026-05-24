@@ -1,5 +1,5 @@
 import express from 'express';
-import { createPost, getPosts, toggleLikePost } from '../Controllers/communityController.js';
+import { createPost, getPosts, toggleLikePost, deletePost } from '../Controllers/communityController.js';
 import { protect } from '../Middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -12,5 +12,8 @@ router.post('/create-post', protect, createPost);
 
 // Private: Toggle upvoting/liking a post (requires login)
 router.post('/:id/like', protect, toggleLikePost);
+
+// Private/Admin: Delete community post
+router.delete('/:id', protect, deletePost);
 
 export default router;

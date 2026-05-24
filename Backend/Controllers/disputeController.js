@@ -1,6 +1,7 @@
 import Dispute from '../Models/Dispute.js';
 import Report from '../Models/Report.js';
 import Organization from '../Models/Organization.js';
+import CommunityPost from '../Models/CommunityPost.js';
 
 // @desc    Raise a new claim dispute / verification request
 // @route   POST /api/disputes
@@ -34,6 +35,33 @@ export const createDispute = async (req, res) => {
       return res.status(404).json({ message: "Report not found." });
     }
 
+    // Strict validation: the report's organizationId must match the representative's organization id,
+    // or if the report is not yet associated with any organization, we can associate it now!
+    let isAssociated = false;
+    
+    if (report.organizationId && report.organizationId.toString() === org._id.toString()) {
+      isAssociated = true;
+    } else if (!report.organizationId) {
+      // If the report is not yet associated, associate it now with the representative's organization!
+      report.organizationId = org._id;
+      report.organizationName = org.organizationName;
+      await report.save();
+      isAssociated = true;
+    } else {
+      // Check if there is an associated community post tagging this organization
+      const matchingPost = await CommunityPost.findOne({
+        reportId: report._id,
+        organizationId: org._id
+      });
+      if (matchingPost) {
+        isAssociated = true;
+      }
+    }
+
+    if (!isAssociated) {
+      return res.status(403).json({ message: 'You can only raise a dispute for reports associated with your organization.' });
+    }
+
     const dispute = await Dispute.create({
       userId: req.user._id,
       reportId,
@@ -55,7 +83,11 @@ export const createDispute = async (req, res) => {
 // @access  Private
 export const getUserDisputes = async (req, res) => {
   try {
-    const disputes = await Dispute.find({ userId: req.user._id })
+    const query = req.user.role === 'organization'
+      ? { organizationId: req.user.organizationId }
+      : { userId: req.user._id };
+
+    const disputes = await Dispute.find(query)
       .populate('reportId', 'url overallScore verdict')
       .sort({ createdAt: -1 });
 

@@ -1,5 +1,6 @@
 import Report from "../Models/Report.js";
 import User from "../Models/User.js";
+import Organization from "../Models/Organization.js";
 import axios from "axios";
 
 // @desc    Trigger credibility analysis for a video URL
@@ -9,19 +10,40 @@ import axios from "axios";
 // @access  Private (auth required)
 // export const analyseVideo = async (req, res) => {
 export const analyseVideo = async (req, res) => {
-  const { url } = req.body;
+  const { url, organizationId } = req.body;
 
   if (!url) {
     return res.status(400).json({ error: "Video URL is required." });
   }
 
+  // Enforce strict role validation: Admins and Organizations cannot generate reports
+  if (req.user.role !== 'user') {
+    return res.status(403).json({ error: "Administrators and Organization Representatives are not permitted to analyze videos." });
+  }
+
   const loggedInUserId = req.user._id;
 
   try {
+    // Lookup organization name from DB if organizationId is supplied
+    let validatedOrgId = null;
+    let orgName = null;
+    if (organizationId) {
+      const org = await Organization.findById(organizationId);
+      if (org) {
+        validatedOrgId = org._id;
+        orgName = org.organizationName;
+      }
+    }
+
     // Cache check — return existing report instantly if URL was already analyzed
     const existingReport = await Report.findOne({ url });
     if (existingReport) {
       console.log(`[Express] Cached report found for URL: ${url}`);
+      if (validatedOrgId && !existingReport.organizationId) {
+        existingReport.organizationId = validatedOrgId;
+        existingReport.organizationName = orgName;
+        await existingReport.save();
+      }
       await User.findByIdAndUpdate(loggedInUserId, {
         $addToSet: { reports: existingReport._id },
       });
@@ -40,6 +62,8 @@ export const analyseVideo = async (req, res) => {
     const mappedReport = {
       jobId,
       url,
+      organizationId: validatedOrgId,
+      organizationName: orgName,
       overallScore: pipelineData.overall_score !== undefined ? pipelineData.overall_score : 50,
       audioScore: pipelineData.audio_score !== undefined ? pipelineData.audio_score : 50,
       textScore: pipelineData.text_score !== undefined ? pipelineData.text_score : 50,

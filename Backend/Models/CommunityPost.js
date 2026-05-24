@@ -19,6 +19,16 @@ const CommunityPostSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    organizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+      index: true,
+    },
+    organizationName: {
+      type: String,
+      required: true,
+    },
     opinionText: {
       type: String,
       required: true,

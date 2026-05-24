@@ -104,3 +104,17 @@ export const getOrganizationById = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Get verified organizations (Public listing for selection dropdowns)
+// @route   GET /api/organizations/public/list
+// @access  Public
+export const getPublicOrganizations = async (req, res) => {
+  try {
+    const orgs = await Organization.find()
+      .select('organizationName orgCode website description')
+      .sort({ organizationName: 1 });
+    res.status(200).json(orgs);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
