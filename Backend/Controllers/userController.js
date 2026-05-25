@@ -1,5 +1,5 @@
 import User from '../Models/User.js';
-import cloudinary from '../Config/cloudinary.js';
+import cloudinary from '../config/cloudinary.js';
 
 // @desc    Get user profile
 // @route   GET /api/users/profile

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  ShieldAlert, ShieldCheck, AlertTriangle, Sparkles, Languages, 
+import {
+  ShieldAlert, ShieldCheck, AlertTriangle, Sparkles, Languages,
   CheckCircle2, XCircle, Info, ExternalLink, RefreshCw, ArrowLeft,
   ChevronDown, ChevronUp, FileText, BarChart3, MessageSquare, Send, ThumbsUp, Lock
 } from 'lucide-react';
@@ -76,6 +76,8 @@ const Report = () => {
     fetchOrganizations();
   }, []);
 
+  const orgId = searchParams.get('orgId') || searchParams.get('organizationId');
+
   // Fetch report on mount
   useEffect(() => {
     if (!videoUrl) {
@@ -84,30 +86,56 @@ const Report = () => {
       return;
     }
 
+    const pollStatus = async (jobId) => {
+      try {
+        const res = await axios.get(`/api/v1/analysis/status/${jobId}`);
+        const { status, report } = res.data;
+        if (status === 'completed') {
+          setReport(report);
+          setLoading(false);
+        } else if (status === 'failed') {
+          setError(report?.verdict || "Video analysis failed inside pipeline.");
+          setLoading(false);
+        } else {
+          // Poll again in 3 seconds
+          setTimeout(() => pollStatus(jobId), 3000);
+        }
+      } catch (err) {
+        console.error("Polling job status failed:", err);
+        setError(err.response?.data?.error || "Failed to check job status.");
+        setLoading(false);
+      }
+    };
+
     const fetchAnalysis = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const orgId = searchParams.get('orgId');
         const payload = { url: videoUrl };
         if (orgId) {
           payload.organizationId = orgId;
         }
 
-        // Direct, synchronous Express analysis call
+        // Call the enqueuing analyse endpoint
         const response = await axios.post('/api/v1/analysis/analyse', payload);
-        setReport(response.data);
+        if (response.status === 202 || response.data.status === 'processing') {
+          console.log(`[Frontend] Job queued. Starting polling for jobId: ${response.data.jobId}`);
+          pollStatus(response.data.jobId);
+        } else {
+          setReport(response.data);
+          setLoading(false);
+        }
       } catch (err) {
         console.error("Analysis API failed:", err);
         setError(err.response?.data?.error || "An error occurred during video analysis. Please try again.");
-      } finally {
         setLoading(false);
       }
     };
 
     fetchAnalysis();
-  }, [videoUrl, searchParams]);
+  }, [videoUrl, orgId]);
+
 
   // Load community opinions for this ad
   useEffect(() => {
@@ -274,7 +302,7 @@ const Report = () => {
         <h2 className="text-3xl font-extrabold text-on-surface tracking-tight sm:text-4xl mb-4 font-display">
           ClaimLens AI Analyzing Video
         </h2>
-        
+
         {/* Animated Loading Text Box */}
         <div className="bg-surface-container-lowest border border-outline-variant rounded-3xl p-6 max-w-lg w-full shadow-md backdrop-blur-sm">
           <div className="flex items-center justify-center gap-3 text-primary font-bold mb-3 text-sm tracking-wide">
@@ -284,11 +312,11 @@ const Report = () => {
           <p className="text-on-surface-variant text-base sm:text-lg animate-pulse min-h-[2.5rem] font-medium leading-relaxed">
             {steps[loadingStep]}
           </p>
-          
+
           {/* Progress Bar */}
           <div className="w-full bg-surface-container-high rounded-full h-2 mt-5 overflow-hidden">
-            <div 
-              className="bg-primary h-2 rounded-full transition-all duration-1000 ease-out" 
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-1000 ease-out"
               style={{ width: `${((loadingStep + 1) / steps.length) * 100}%` }}
             ></div>
           </div>
@@ -308,7 +336,7 @@ const Report = () => {
           <h3 className="text-2xl font-bold text-on-surface mb-3 font-display">Analysis Failed</h3>
           <p className="text-on-surface-variant mb-6 leading-relaxed text-sm">{error}</p>
           <div className="flex flex-col gap-3">
-            <button 
+            <button
               onClick={() => navigate('/')}
               className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer"
             >
@@ -325,9 +353,9 @@ const Report = () => {
   return (
     <div className="min-h-screen bg-background text-on-surface py-10 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header Breadcrumb */}
-        <button 
+        <button
           onClick={() => navigate('/')}
           className="inline-flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary transition-colors mb-8 group font-semibold cursor-pointer"
         >
@@ -337,31 +365,30 @@ const Report = () => {
 
         {/* Dashboard Grid Header */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start mb-10">
-          
+
           {/* Card 1: Radial Gauge for Overall Score */}
           <div className="lg:col-span-1 bg-surface-container-lowest border border-outline-variant rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -z-10"></div>
-            
+
             <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-6">Overall Credibility Score</h3>
-            
+
             {/* Visual Circular Meter */}
             <div className="relative w-44 h-44 flex items-center justify-center mb-6">
               {/* SVG Background Circle */}
               <svg className="w-full h-full transform -rotate-90">
-                <circle 
-                  cx="88" cy="88" r="76" 
-                  className="stroke-outline-variant/60" 
-                  strokeWidth="10" 
-                  fill="transparent" 
+                <circle
+                  cx="88" cy="88" r="76"
+                  className="stroke-outline-variant/60"
+                  strokeWidth="10"
+                  fill="transparent"
                 />
-                <circle 
-                  cx="88" cy="88" r="76" 
-                  className={`transition-all duration-1000 ease-out ${
-                    report.overallScore >= 80 ? "stroke-emerald-500" :
-                    report.overallScore >= 50 ? "stroke-amber-500" : "stroke-rose-500"
-                  }`} 
-                  strokeWidth="10" 
-                  fill="transparent" 
+                <circle
+                  cx="88" cy="88" r="76"
+                  className={`transition-all duration-1000 ease-out ${report.overallScore >= 80 ? "stroke-emerald-500" :
+                      report.overallScore >= 50 ? "stroke-amber-500" : "stroke-rose-500"
+                    }`}
+                  strokeWidth="10"
+                  fill="transparent"
                   strokeDasharray={477.5}
                   strokeDashoffset={477.5 - (477.5 * report.overallScore) / 100}
                   strokeLinecap="round"
@@ -376,7 +403,7 @@ const Report = () => {
 
             <div className={`px-4 py-1.5 rounded-full border text-xs font-semibold ${getScoreColor(report.overallScore)}`}>
               {report.overallScore >= 80 ? "Highly Credible" :
-               report.overallScore >= 50 ? "Caution Advised" : "Highly Misleading"}
+                report.overallScore >= 50 ? "Caution Advised" : "Highly Misleading"}
             </div>
 
             {/* Direct Official Brand Dispute Trigger */}
@@ -399,7 +426,7 @@ const Report = () => {
           {/* Card 2: AI Verdict Box */}
           <div className="lg:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-3xl p-8 shadow-sm flex flex-col justify-between h-full relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-primary-hover to-amber-500"></div>
-            
+
             <div>
               <div className="flex items-center gap-2.5 text-primary font-bold text-sm uppercase tracking-wider mb-4">
                 <Sparkles className="w-4 h-4 animate-pulse" />
@@ -421,21 +448,21 @@ const Report = () => {
                   <span className="text-on-surface">{report.audioScore}/100</span>
                 </div>
                 <div className="w-full bg-surface-container-high rounded-full h-2 overflow-hidden">
-                  <div 
-                    className={`h-2 rounded-full bg-gradient-to-r ${getScoreGradient(report.audioScore)}`} 
+                  <div
+                    className={`h-2 rounded-full bg-gradient-to-r ${getScoreGradient(report.audioScore)}`}
                     style={{ width: `${report.audioScore}%` }}
                   ></div>
                 </div>
               </div>
-              
+
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-2">
                   <span className="text-on-surface-variant uppercase tracking-wider">Text & Disclaimer</span>
                   <span className="text-on-surface">{report.textScore}/100</span>
                 </div>
                 <div className="w-full bg-surface-container-high rounded-full h-2 overflow-hidden">
-                  <div 
-                    className={`h-2 rounded-full bg-gradient-to-r ${getScoreGradient(report.textScore)}`} 
+                  <div
+                    className={`h-2 rounded-full bg-gradient-to-r ${getScoreGradient(report.textScore)}`}
                     style={{ width: `${report.textScore}%` }}
                   ></div>
                 </div>
@@ -449,7 +476,7 @@ const Report = () => {
         {!user ? (
           <div className="bg-surface-container-lowest border border-outline-variant rounded-3xl p-8 sm:p-12 text-center shadow-sm relative overflow-hidden mt-6 animate-fadeIn">
             <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full blur-3xl -z-10"></div>
-            
+
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 mb-6 text-primary">
               <Lock className="h-7 w-7 animate-pulse" />
             </div>
@@ -457,7 +484,7 @@ const Report = () => {
             <h3 className="text-3xl font-extrabold text-on-surface mb-3 font-display tracking-tight">
               Login to See Complete Report
             </h3>
-            
+
             <p className="text-on-surface-variant text-sm sm:text-base max-w-xl mx-auto mb-8 leading-relaxed font-medium">
               Unlock the detailed audit dashboard including automated fact-check Google search evidence, disclaimer OCR text audits, visual manipulation checklist markers, and access the open community discussion boards.
             </p>
@@ -480,7 +507,7 @@ const Report = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              
+
               {/* Left Columns (Col-span-2): Fact-Checked Claims */}
               <div className="lg:col-span-2">
                 <div className="flex items-center gap-2 mb-6">
@@ -501,14 +528,13 @@ const Report = () => {
                     {report.flaggedClaims.map((item, idx) => {
                       const isExpanded = expandedClaim === idx;
                       return (
-                        <div 
-                          key={idx} 
-                          className={`bg-surface-container-lowest border transition-all rounded-2xl overflow-hidden shadow-sm ${
-                            isExpanded ? "border-primary/40 ring-1 ring-primary/20" : "border-outline-variant hover:border-outline-variant/80"
-                          }`}
+                        <div
+                          key={idx}
+                          className={`bg-surface-container-lowest border transition-all rounded-2xl overflow-hidden shadow-sm ${isExpanded ? "border-primary/40 ring-1 ring-primary/20" : "border-outline-variant hover:border-outline-variant/80"
+                            }`}
                         >
                           {/* Accordion Toggle Header */}
-                          <button 
+                          <button
                             onClick={() => toggleClaim(idx)}
                             className="w-full text-left p-6 flex justify-between items-center gap-4 transition-colors cursor-pointer"
                           >
@@ -590,9 +616,9 @@ const Report = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-on-surface-variant font-medium">Original Link</span>
-                      <a 
-                        href={report.url} 
-                        target="_blank" 
+                      <a
+                        href={report.url}
+                        target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 text-primary hover:text-primary-hover font-bold transition-colors"
                       >
@@ -620,7 +646,7 @@ const Report = () => {
                     (user.role !== 'admin' && user.role !== 'organization') ? (
                       <form onSubmit={handleSubmitOpinion} className="bg-surface-container-lowest border border-outline-variant rounded-3xl p-6 shadow-sm space-y-4">
                         <h4 className="text-xs font-black text-on-surface uppercase tracking-wider mb-1">Share your opinion</h4>
-                        
+
                         {/* Brand Tag Dropdown Selection */}
                         <div>
                           <label className="block text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">
@@ -728,11 +754,10 @@ const Report = () => {
                             <div className="flex items-center gap-4">
                               <button
                                 onClick={() => handleLikeOpinion(post._id)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                                  isLiked
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${isLiked
                                     ? "bg-primary/10 border-primary text-primary"
                                     : "bg-surface-container-low border-outline-variant text-on-surface-variant hover:text-on-surface"
-                                }`}
+                                  }`}
                               >
                                 <ThumbsUp className="w-3.5 h-3.5" />
                                 <span>{post.likes.length} Upvotes</span>
