@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { ShieldCheck, History, LogOut } from 'lucide-react';
+import { ShieldCheck, History, LogOut, Loader2, AlertTriangle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(true);
 
+  // Fetch initial history
   useEffect(() => {
     if (!user) return;
     const fetchHistory = async () => {
@@ -24,6 +25,44 @@ const Dashboard = () => {
     };
     fetchHistory();
   }, [user]);
+
+  // Active Background Polling Loop for processing/pending reports
+  useEffect(() => {
+    const activeJobs = reports.filter(r => r.status === 'processing');
+    if (activeJobs.length === 0) return;
+
+    let isSubscribed = true;
+
+    const pollPendingJobs = async () => {
+      try {
+        const promises = activeJobs.map(async (job) => {
+          const res = await axios.get(`/api/v1/analysis/status/${job.jobId}`);
+          const { status, report: updatedReport } = res.data;
+
+          if (status === 'completed' || status === 'failed') {
+            // Update this specific report in local state dynamically!
+            setReports(prevReports => 
+              prevReports.map(r => r.jobId === job.jobId ? updatedReport : r)
+            );
+          }
+        });
+        await Promise.all(promises);
+      } catch (err) {
+        console.error("Dashboard background poll failed:", err);
+      }
+    };
+
+    // Poll every 4 seconds
+    const intervalId = setInterval(() => {
+      if (isSubscribed) pollPendingJobs();
+    }, 4000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(intervalId);
+    };
+  }, [reports]);
+
 
   if (loading) {
     return (
@@ -154,44 +193,125 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {reports.map((report) => (
-                <div 
-                  key={report._id} 
-                  className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 hover:border-primary/40 transition-all flex flex-col justify-between shadow-sm group hover:shadow-md"
-                >
-                  <div>
-                    <div className="flex justify-between items-start gap-4 mb-4">
-                      <span className="text-xs font-bold text-primary font-mono tracking-wider uppercase">
-                        {report.languageDetected} Ad Analysis
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                        report.overallScore >= 80 ? "text-emerald-700 border-emerald-500/20 bg-emerald-500/10" :
-                        report.overallScore >= 50 ? "text-amber-700 border-amber-500/20 bg-amber-500/10" :
-                        "text-rose-700 border-rose-500/20 bg-rose-500/10"
-                      }`}>
-                        Score: {report.overallScore}/100
-                      </span>
-                    </div>
-                    <p className="text-on-surface font-semibold text-sm truncate mb-2 group-hover:text-primary transition-colors">
-                      {report.url}
-                    </p>
-                    <p className="text-on-surface-variant text-xs line-clamp-2 italic mb-4">
-                      "{report.verdict}"
-                    </p>
-                  </div>
-                  <div className="flex justify-between items-center pt-4 border-t border-outline-variant mt-2">
-                    <span className="text-xs text-on-surface-variant">
-                      {new Date(report.createdAt).toLocaleDateString()}
-                    </span>
-                    <a 
-                      href={`/report?url=${encodeURIComponent(report.url)}`}
-                      className="text-primary hover:text-primary-hover font-semibold text-xs flex items-center gap-1"
+              {reports.map((report) => {
+                const isProcessing = report.status === 'processing';
+                const isFailed = report.status === 'failed';
+
+                if (isProcessing) {
+                  return (
+                    <div 
+                      key={report._id || report.jobId} 
+                      className="bg-gradient-to-br from-surface-container-lowest to-primary/5 border border-primary/30 rounded-2xl p-6 flex flex-col justify-between shadow-sm animate-pulse"
                     >
-                      View Full Dashboard →
-                    </a>
+                      <div>
+                        <div className="flex justify-between items-start gap-4 mb-4">
+                          <span className="text-xs font-bold text-primary flex items-center gap-1.5 font-mono tracking-wider uppercase">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            AI Auditing Active
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold border border-primary/25 bg-primary/10 text-primary">
+                            Processing...
+                          </span>
+                        </div>
+                        <p className="text-on-surface font-semibold text-sm truncate mb-2">
+                          {report.url}
+                        </p>
+                        <p className="text-on-surface-variant text-xs line-clamp-2 italic mb-4">
+                          "The AI analysis pipeline is running in the background. Pulling transcription, fact-checking claims, and scanning frames..."
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center pt-4 border-t border-outline-variant/60 mt-2">
+                        <span className="text-xs text-on-surface-variant">
+                          {new Date(report.createdAt).toLocaleDateString()}
+                        </span>
+                        <a 
+                          href={`/report?url=${encodeURIComponent(report.url)}`}
+                          className="text-primary hover:text-primary-hover font-semibold text-xs flex items-center gap-1"
+                        >
+                          View Live Stream →
+                        </a>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (isFailed) {
+                  return (
+                    <div 
+                      key={report._id || report.jobId} 
+                      className="bg-gradient-to-br from-surface-container-lowest to-rose-500/5 border border-rose-500/20 rounded-2xl p-6 flex flex-col justify-between shadow-sm hover:border-rose-500/40 transition-all"
+                    >
+                      <div>
+                        <div className="flex justify-between items-start gap-4 mb-4">
+                          <span className="text-xs font-bold text-rose-600 flex items-center gap-1.5 font-mono tracking-wider uppercase">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Analysis Interrupted
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold border border-rose-500/20 bg-rose-500/10 text-rose-600">
+                            Failed
+                          </span>
+                        </div>
+                        <p className="text-on-surface font-semibold text-sm truncate mb-2">
+                          {report.url}
+                        </p>
+                        <p className="text-rose-600/80 text-xs line-clamp-2 italic mb-4 font-mono">
+                          "{report.verdict || "An internal error occurred during video download or scraping."}"
+                        </p>
+                      </div>
+                      <div className="flex justify-between items-center pt-4 border-t border-outline-variant/60 mt-2">
+                        <span className="text-xs text-on-surface-variant">
+                          {new Date(report.createdAt).toLocaleDateString()}
+                        </span>
+                        <a 
+                          href={`/report?url=${encodeURIComponent(report.url)}`}
+                          className="text-rose-600 hover:text-rose-700 font-semibold text-xs flex items-center gap-1"
+                        >
+                          Retry Analysis →
+                        </a>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div 
+                    key={report._id} 
+                    className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 hover:border-primary/40 transition-all flex flex-col justify-between shadow-sm group hover:shadow-md"
+                  >
+                    <div>
+                      <div className="flex justify-between items-start gap-4 mb-4">
+                        <span className="text-xs font-bold text-primary font-mono tracking-wider uppercase">
+                          {report.languageDetected} Ad Analysis
+                        </span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                          report.overallScore >= 80 ? "text-emerald-700 border-emerald-500/20 bg-emerald-500/10" :
+                          report.overallScore >= 50 ? "text-amber-700 border-amber-500/20 bg-amber-500/10" :
+                          "text-rose-700 border-rose-500/20 bg-rose-500/10"
+                        }`}>
+                          Score: {report.overallScore}/100
+                        </span>
+                      </div>
+                      <p className="text-on-surface font-semibold text-sm truncate mb-2 group-hover:text-primary transition-colors">
+                        {report.url}
+                      </p>
+                      <p className="text-on-surface-variant text-xs line-clamp-2 italic mb-4">
+                        "{report.verdict}"
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center pt-4 border-t border-outline-variant mt-2">
+                      <span className="text-xs text-on-surface-variant">
+                        {new Date(report.createdAt).toLocaleDateString()}
+                      </span>
+                      <a 
+                        href={`/report?url=${encodeURIComponent(report.url)}`}
+                        className="text-primary hover:text-primary-hover font-semibold text-xs flex items-center gap-1"
+                      >
+                        View Full Dashboard →
+                      </a>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

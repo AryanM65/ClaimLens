@@ -17,6 +17,14 @@ const ReportSchema = new mongoose.Schema(
       index: true,
     },
 
+    status: {
+      type: String,
+      enum: ["processing", "completed", "failed"],
+      default: "processing",
+      index: true,
+    },
+
+
     overallScore: {
       type: Number,
       default: 50,
@@ -83,5 +91,20 @@ const ReportSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Mongoose query middleware to retroactively map old records (created before the queue system)
+// which have completed analyses but default to 'processing' when queried.
+ReportSchema.post(['find', 'findOne', 'findOneAndUpdate'], function(res) {
+  if (!res) return;
+  const docs = Array.isArray(res) ? res : [res];
+  for (const doc of docs) {
+    if (doc) {
+      const isPlaceholderVerdict = doc.verdict === 'AI analysis is currently in progress. Please check back shortly.' || !doc.verdict;
+      if (doc.status === 'processing' && !isPlaceholderVerdict) {
+        doc.status = 'completed';
+      }
+    }
+  }
+});
 
 export default mongoose.model("Report", ReportSchema);

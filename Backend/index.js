@@ -10,7 +10,7 @@ import communityRoutes from "./Routes/communityRoutes.js";
 import disputeRoutes from "./Routes/disputeRoutes.js";
 import organizationRoutes from "./Routes/organizationRoutes.js";
 import contactRoutes from "./Routes/contactRoutes.js";
-
+import { initAnalysisWorker } from "./workers/analysisWorker.js";
 
 dotenv.config();
 
@@ -46,4 +46,11 @@ app.use("/api/v1/contact", contactRoutes);
 // Start Server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  try {
+    initAnalysisWorker();
+    console.log("[Express] Background BullMQ worker initialized successfully.");
+  } catch (err) {
+    console.error("[Express] FAILED to start BullMQ worker:", err.message);
+  }
 });
+
