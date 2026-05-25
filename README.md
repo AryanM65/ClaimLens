@@ -1,4 +1,4 @@
-# 🔍 ClaimLens - Multi-Modal AI Credibility Analysis Platform
+# ClaimLens - Multi-Modal AI Credibility Analysis Platform
 
 ClaimLens is a premium, full-stack enterprise web application designed to automatically analyze and audit the credibility of advertisements across major social media networks (YouTube, Instagram). 
 
