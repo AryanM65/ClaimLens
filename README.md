@@ -6,7 +6,7 @@ By simply pasting an ad URL, our background orchestration system runs a robust, 
 
 ---
 
-## 🏗️ Architecture & Job Flow
+## Architecture & Job Flow
 
 ```mermaid
 graph TD
@@ -27,7 +27,7 @@ The system uses a highly resilient **asynchronous queue architecture** to ensure
 
 ---
 
-## ✨ Features
+## Features
 
 * **Multi-Modal Analysis**: Correlates audio transcript, visual text overlays (OCR), and raw frame sequences.
 * **Background Queue Processing**: Uses **BullMQ** and **Upstash Redis** to insulate server CPU during heavy AI workloads.
@@ -37,7 +37,7 @@ The system uses a highly resilient **asynchronous queue architecture** to ensure
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 ClaimLens/
@@ -61,7 +61,7 @@ ClaimLens/
 
 ---
 
-## ⚙️ Setup & Local Installation
+## Setup & Local Installation
 
 ### Prerequisites
 Make sure you have the following installed on your system:
