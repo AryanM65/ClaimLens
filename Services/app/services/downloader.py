@@ -14,6 +14,8 @@ async def _get_duration(url: str) -> float:
     """
     cmd = [
         sys.executable, "-m", "yt_dlp",
+        "--js-runtimes", "node",
+        "--remote-components", "ejs:github",
         "--dump-json",
         "--no-download",
         "--quiet",
@@ -65,6 +67,8 @@ async def download(url: str, job_dir: str) -> str:
     output_template = os.path.join(job_dir, "video.%(ext)s")
     cmd = [
         sys.executable, "-m", "yt_dlp",
+        "--js-runtimes", "node",
+        "--remote-components", "ejs:github",
         "--format", "bestvideo[height<=480]+bestaudio/best[height<=480]/best",
         "--output", output_template,
         url,

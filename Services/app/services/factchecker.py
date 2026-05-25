@@ -10,7 +10,7 @@ from app.utils.helpers import clean_json_response, generate_content_with_retry
 load_dotenv()
 
 _client = None
-_MODEL  = "gemini-2.0-flash"
+_MODEL  = "gemini-2.5-flash"
 
 def _get_client():
     global _client
@@ -42,7 +42,7 @@ Return ONLY the search query string. No explanation, no quotes, no punctuation a
 
     for attempt in range(3):
         try:
-            response = _client.models.generate_content(model=_MODEL, contents=prompt)
+            response = _get_client().models.generate_content(model=_MODEL, contents=prompt)
             query = response.text.strip().strip('"').strip("'")
             return query if query else claim
         except Exception as e:

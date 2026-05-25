@@ -9,7 +9,7 @@ from app.utils.helpers import normalize_score, clean_json_response, generate_con
 load_dotenv()
 
 _client = None
-_MODEL  = "gemini-2.0-flash"
+_MODEL  = "gemini-2.5-flash"
 
 def _get_client():
     global _client
@@ -107,7 +107,7 @@ Return ONLY the JSON array. No explanation, no markdown, no code block."""
     contents = [prompt] + [{"inline_data": part} for part in image_parts]
 
     try:
-        response = _client.models.generate_content(model=_MODEL, contents=contents)
+        response = _get_client().models.generate_content(model=_MODEL, contents=contents)
         flags = json.loads(clean_json_response(response.text))
         if not isinstance(flags, list):
             return []
@@ -161,7 +161,7 @@ If no factual claims are found, return an empty array: []
 Return ONLY the JSON array. No explanation, no markdown, no code block."""
 
     try:
-        response = _client.models.generate_content(model=_MODEL, contents=prompt)
+        response = _get_client().models.generate_content(model=_MODEL, contents=prompt)
         claims = json.loads(clean_json_response(response.text))
         if not isinstance(claims, list):
             return []
