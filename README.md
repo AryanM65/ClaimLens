@@ -1,6 +1,6 @@
 # 🔍 ClaimLens - Multi-Modal AI Credibility Analysis Platform
 
-ClaimLens is a premium, full-stack enterprise web application designed to automatically analyze and audit the credibility of advertisements across major social media networks (YouTube, Instagram, TikTok, Facebook). 
+ClaimLens is a premium, full-stack enterprise web application designed to automatically analyze and audit the credibility of advertisements across major social media networks (YouTube, Instagram). 
 
 By simply pasting an ad URL, our background orchestration system runs a robust, multi-modal Python pipeline that extracts audio transcriptions, processes visual frames, parses on-screen text via OCR, and cross-references assertions with Google Search to identify deceptive claims, visual manipulations, and misleading comparative statements. It leverages **Gemini 2.5 Flash** for deep multimodal analysis and the **Serper Google Search API** for live fact-checking, ultimately generating a comprehensive credibility report and verdict.
 
