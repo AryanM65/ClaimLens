@@ -31,7 +31,7 @@ _SEMAPHORE = asyncio.Semaphore(3)
 def _make_search_query(claim: str) -> str:
     """
     Uses Gemini to convert a claim into an optimal Google search query.
-    Retries up to 3 times on transient 503 errors.
+    Retries automatically on 429 rate limit errors using helper wrapper.
     """
     prompt = f"""Convert this advertisement claim into a short, effective Google search query
 that would help fact-check whether the claim is true or false.
@@ -40,17 +40,13 @@ Claim: "{claim}"
 
 Return ONLY the search query string. No explanation, no quotes, no punctuation at the end."""
 
-    for attempt in range(3):
-        try:
-            response = _get_client().models.generate_content(model=_MODEL, contents=prompt)
-            query = response.text.strip().strip('"').strip("'")
-            return query if query else claim
-        except Exception as e:
-            if attempt < 2:
-                time.sleep(2 ** attempt)   # 1s, 2s backoff
-            else:
-                return claim
-    return claim
+    try:
+        response = generate_content_with_retry(_get_client(), _MODEL, prompt)
+        query = response.text.strip().strip('"').strip("'")
+        return query if query else claim
+    except Exception as e:
+        print(f"[_make_search_query ERROR] {type(e).__name__}: {e}")
+        return claim
 
 
 async def _search_claim(claim: str) -> list[str]:
@@ -145,7 +141,8 @@ async def verify_claims(claims: list[dict]) -> list[dict]:
       1. Searched on Google via Serper (top 3 snippets)
       2. Labelled by Gemini based on the snippets
 
-    Up to 3 claims are processed concurrently (semaphore-controlled).
+    Uses a Semaphore of 1 to run claims sequentially. This prevents spamming
+    the Gemini free-tier with concurrent requests and hitting 429 rate limits.
 
     Args:
         claims: List of {"claim": str, "category": str} from analyser.extract_claims()
@@ -156,12 +153,16 @@ async def verify_claims(claims: list[dict]) -> list[dict]:
     if not claims:
         return []
 
+    # Process claims sequentially to respect the Gemini API rate limit
+    gemini_sem = asyncio.Semaphore(1)
+
     async def process_one(c: dict) -> dict:
-        snippets, query = await _search_claim(c["claim"])
-        result = await _label_claim(c["claim"], snippets)
-        result["category"]     = c.get("category", "other")
-        result["search_query"] = query      # store what was actually searched
-        result["snippets"]     = snippets   # store raw Serper snippets
-        return result
+        async with gemini_sem:
+            snippets, query = await _search_claim(c["claim"])
+            result = await _label_claim(c["claim"], snippets)
+            result["category"]     = c.get("category", "other")
+            result["search_query"] = query      # store what was actually searched
+            result["snippets"]     = snippets   # store raw Serper snippets
+            return result
 
     return list(await asyncio.gather(*[process_one(c) for c in claims]))

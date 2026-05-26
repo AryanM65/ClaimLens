@@ -107,7 +107,7 @@ Return ONLY the JSON array. No explanation, no markdown, no code block."""
     contents = [prompt] + [{"inline_data": part} for part in image_parts]
 
     try:
-        response = _get_client().models.generate_content(model=_MODEL, contents=contents)
+        response = generate_content_with_retry(_get_client(), _MODEL, contents)
         flags = json.loads(clean_json_response(response.text))
         if not isinstance(flags, list):
             return []
@@ -115,7 +115,8 @@ Return ONLY the JSON array. No explanation, no markdown, no code block."""
             {"issue": str(f.get("issue", "")), "description": str(f.get("description", ""))}
             for f in flags if f.get("issue")
         ]
-    except Exception:
+    except Exception as e:
+        print(f"[visual_analysis ERROR] {type(e).__name__}: {e}")
         return []
 
 
@@ -161,7 +162,7 @@ If no factual claims are found, return an empty array: []
 Return ONLY the JSON array. No explanation, no markdown, no code block."""
 
     try:
-        response = _get_client().models.generate_content(model=_MODEL, contents=prompt)
+        response = generate_content_with_retry(_get_client(), _MODEL, prompt)
         claims = json.loads(clean_json_response(response.text))
         if not isinstance(claims, list):
             return []
